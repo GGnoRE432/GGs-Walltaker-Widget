@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/app_widget_description"
+    android:initialKeyguardLayout="@layout/image_widget"
+    android:initialLayout="@layout/image_widget"
+    android:minHeight="110dp"
+    android:minWidth="110dp"
+    android:previewImage="@drawable/example_appwidget_preview"
+    android:previewLayout="@layout/image_widget"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="2"
+    android:targetCellWidth="2"
+    android:updatePeriodMillis="30000"
+    android:widgetCategory="home_screen"
+    android:configure="com.example.ggswidget.ImageWidgetConfigureActivity"/>
