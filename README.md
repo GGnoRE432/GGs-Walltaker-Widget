@@ -4,7 +4,7 @@
 
 <h1>How To Install</h1>
 
-<p>Click on the Release near the top right of this page, then download the .apk to your phone and open it!</p>
+<p>Click on the Release near the bottom of this text (top right if your on desktop), then download the .apk to your phone and open it!</p>
 
 <h1>Features:</h1>
 - Able to place multiple widgets with each able to point to their own link.<br>
