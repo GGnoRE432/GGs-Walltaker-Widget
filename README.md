@@ -9,6 +9,7 @@
 <h1>Features:</h1>
 - Able to place multiple widgets with each able to point to their own link.<br>
 - Click on the widget to open the link.<br>
+- Optional crop to fill the entire widget.<br>
 - Configurable update timer. Can help with battery life if set higher. (Default: 10 seconds)<br>
 <br>
 
