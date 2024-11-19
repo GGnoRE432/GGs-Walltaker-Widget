@@ -188,9 +188,7 @@ fun getJsonDataFromUrl(url: String): String {
 
 fun getImageFromURL(id: String): String{
 
-    val executor = Executors.newSingleThreadExecutor();
-
-    val handler = Handler(Looper.getMainLooper())
+    val executor = Executors.newSingleThreadExecutor()
 
     var imageURL = ""
 
@@ -203,7 +201,7 @@ fun getImageFromURL(id: String): String{
             val jsonObject = JSONObject(jsonData)
             imageURL = jsonObject.getString("post_url")
         } catch (e: Exception) {
-            Log.d("UNAVAILABLE", "Service is unavailable!");
+            Log.d("UNAVAILABLE", "Service is unavailable!")
         }
 
     }
