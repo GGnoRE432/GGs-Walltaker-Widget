@@ -146,7 +146,7 @@ internal fun updateAppWidget(
         }
     }
 
-    Glide.with(context.applicationContext).asBitmap().override(2000,2000).fitCenter().load(getImageFromURL(imageLinkID)).into(awt)
+    Glide.with(context.applicationContext).asBitmap().override(1900,1900).fitCenter().load(getImageFromURL(imageLinkID)).into(awt)
 
     setClickable(context, views, appWidgetId)
 
