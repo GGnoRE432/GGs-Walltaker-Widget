@@ -21,7 +21,7 @@
     <string name="general_header">General</string>
     <string name="update_title">Update Interval in Seconds (Cannot be less than 10 seconds)</string>
     <string name="instructions">Instructions</string>
-    <string name="instructionslist">1. Add the GG\'s Widget to your home screen\n2.Enter your Link ID\n3. … \n4. Profit!\n\n\nOpen the link url by tapping on the widget\n\nYou can also change the amount of time it takes the widget to update using the wrench button\n\nMade by GGnoRE432</string>
+    <string name="instructionslist">1. Add the Walltaker Widget to your home screen\n2. Enter your Link ID\n3. … \n4. Profit!\n\n\nOpen the link url by tapping on the widget\n\nYou can also change the amount of time it takes the widget to update using the wrench button\n\nMade by GGnoRE432</string>
     <string name="crop_to_fill">Crop to Fill</string>
     <string name="linkid">Link ID\nExample: https://walltaker.joi.how/links/\"XXXXX\"</string>
 </resources>
