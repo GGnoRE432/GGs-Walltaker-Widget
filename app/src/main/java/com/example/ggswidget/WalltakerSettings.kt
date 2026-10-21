@@ -19,6 +19,10 @@ object WalltakerSettings {
         return "${baseUrl(context)}/links/${android.net.Uri.encode(linkId)}"
     }
 
+    fun linkApiUrl(context: Context, linkId: String): String {
+        return "${baseUrl(context)}/api/links/${android.net.Uri.encode(linkId)}.json"
+    }
+
     fun responseUrl(context: Context, linkId: String): String {
         return "${baseUrl(context)}/api/links/${android.net.Uri.encode(linkId)}/response.json"
     }

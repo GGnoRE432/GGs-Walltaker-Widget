@@ -13,18 +13,26 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 class WalltakerWebSocketService : Service() {
-    private val client = OkHttpClient.Builder().build()
+    private val client = OkHttpClient.Builder()
+        .pingInterval(30, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
     private val subscriptions = ConcurrentHashMap<Int, LinkSubscription>()
     private val handler = Handler(Looper.getMainLooper())
+    private var serviceStopping = false
 
     override fun onCreate() {
         super.onCreate()
@@ -37,6 +45,8 @@ class WalltakerWebSocketService : Service() {
     }
 
     override fun onDestroy() {
+        serviceStopping = true
+        handler.removeCallbacksAndMessages(null)
         subscriptions.values.forEach { it.webSocket.close(1000, "Service stopped") }
         subscriptions.clear()
         GifWidgetAnimator.stopAll()
@@ -70,6 +80,8 @@ class WalltakerWebSocketService : Service() {
                 closeSubscription(appWidgetId)
                 return@forEach
             }
+
+            fetchCurrentImage(appWidgetId, linkId)
 
             if (existing?.linkId == linkId && existing.cableUrl == cableUrl) {
                 return@forEach
@@ -110,17 +122,49 @@ class WalltakerWebSocketService : Service() {
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.d(TAG, "WebSocket failed for widget $appWidgetId: ${t.message}")
-                subscriptions.remove(appWidgetId)
-                handler.postDelayed({ reconnectIfCurrent(appWidgetId, linkId, cableUrl) }, RECONNECT_DELAY_MS)
+                if (removeCurrentSubscription(appWidgetId, webSocket)) {
+                    scheduleReconnect(appWidgetId, linkId, cableUrl)
+                }
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                subscriptions.remove(appWidgetId)
+                Log.d(TAG, "WebSocket closed for widget $appWidgetId: $code $reason")
+                if (removeCurrentSubscription(appWidgetId, webSocket) &&
+                    reason != "Widget removed or link changed" &&
+                    reason != "Service stopped"
+                ) {
+                    scheduleReconnect(appWidgetId, linkId, cableUrl)
+                }
             }
         }
 
         val webSocket = client.newWebSocket(request, listener)
         subscriptions[appWidgetId] = LinkSubscription(linkId, cableUrl, webSocket)
+    }
+
+    private fun fetchCurrentImage(appWidgetId: Int, linkId: String) {
+        val request = Request.Builder()
+            .url(WalltakerSettings.linkApiUrl(this, linkId))
+            .header("User-Agent", CLIENT_NAME)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.d(TAG, "Unable to fetch current Walltaker image for widget $appWidgetId: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!it.isSuccessful) {
+                        Log.d(TAG, "Current Walltaker image fetch failed for widget $appWidgetId: ${it.code}")
+                        return
+                    }
+
+                    val body = it.body?.string().orEmpty()
+                    updateImageFromLinkJson(appWidgetId, linkId, body)
+                }
+            }
+        })
     }
 
     private fun handleMessage(appWidgetId: Int, linkId: String, text: String) {
@@ -151,11 +195,58 @@ class WalltakerWebSocketService : Service() {
         }
     }
 
+    private fun updateImageFromLinkJson(appWidgetId: Int, linkId: String, text: String) {
+        try {
+            val root = JSONObject(text)
+            val link = when {
+                root.has("post_url") -> root
+                root.optJSONObject("link") != null -> root.optJSONObject("link")
+                root.optJSONObject("message") != null -> root.optJSONObject("message")
+                else -> null
+            } ?: return
+
+            if (link.has("success") && !link.optBoolean("success", false)) {
+                return
+            }
+
+            val postUrl = link.optString("post_url")
+            if (postUrl.isEmpty()) {
+                Log.d(TAG, "Current Walltaker link $linkId did not include a post_url.")
+                return
+            }
+
+            Log.d(TAG, "Fetched current Walltaker image for widget $appWidgetId link $linkId")
+            Preferences.saveCurrentImgPref(this, appWidgetId, postUrl)
+            Preferences.saveCurrentSenderPref(this, appWidgetId, link.optString("set_by"))
+            handler.post { ImageLookup.setImage(this, appWidgetId) }
+        } catch (e: Exception) {
+            Log.d(TAG, "Unable to read current Walltaker image for link $linkId: ${e.message}")
+        }
+    }
+
     private fun reconnectIfCurrent(appWidgetId: Int, linkId: String, cableUrl: String) {
+        if (serviceStopping) {
+            return
+        }
+
         val currentLinkId = Preferences.loadTitlePref(this, appWidgetId).trim()
         val currentCableUrl = WalltakerSettings.cableUrl(this)
         if (currentLinkId == linkId && currentCableUrl == cableUrl && subscriptions[appWidgetId] == null) {
             openSubscription(appWidgetId, linkId, cableUrl)
+        }
+    }
+
+    private fun removeCurrentSubscription(appWidgetId: Int, webSocket: WebSocket): Boolean {
+        val subscription = subscriptions[appWidgetId] ?: return false
+        return subscription.webSocket === webSocket && subscriptions.remove(appWidgetId, subscription)
+    }
+
+    private fun scheduleReconnect(appWidgetId: Int, linkId: String, cableUrl: String) {
+        if (!serviceStopping) {
+            handler.postDelayed(
+                { reconnectIfCurrent(appWidgetId, linkId, cableUrl) },
+                RECONNECT_DELAY_MS
+            )
         }
     }
 

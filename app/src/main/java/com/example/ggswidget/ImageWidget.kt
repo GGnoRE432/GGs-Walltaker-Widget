@@ -7,12 +7,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.util.Log
 import android.widget.RemoteViews
 
 class ImageWidget : AppWidgetProvider() {
-
-    val ACTION_UPDATE_WIDGET = "com.example.app.ACTION_UPDATE_WIDGET"
 
     override fun onUpdate(
         context: Context,
@@ -34,6 +33,16 @@ class ImageWidget : AppWidgetProvider() {
         WalltakerWebSocketService.start(context)
     }
 
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        updateAppWidget(context, appWidgetId)
+    }
+
     override fun onEnabled(context: Context) {
         // Enter relevant functionality for when the first widget is created
         WalltakerWebSocketService.start(context)
@@ -50,13 +59,31 @@ class ImageWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
 
-        if (intent.action == ACTION_UPDATE_WIDGET) {
-            WalltakerWebSocketService.start(context)
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(ComponentName(context, ImageWidget::class.java))
-            onUpdate(context, appWidgetManager, appWidgetIds)
+        when (intent.action) {
+            ACTION_UPDATE_WIDGET,
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_USER_UNLOCKED,
+            AppWidgetManager.ACTION_APPWIDGET_RESTORED -> {
+                refreshWidgetsAndConnection(context)
+            }
         }
 
+    }
+
+    private fun refreshWidgetsAndConnection(context: Context) {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val appWidgetIds = appWidgetManager.getAppWidgetIds(ComponentName(context, ImageWidget::class.java))
+        if (appWidgetIds.isEmpty()) {
+            return
+        }
+
+        WalltakerWebSocketService.start(context)
+        onUpdate(context, appWidgetManager, appWidgetIds)
+    }
+
+    companion object {
+        const val ACTION_UPDATE_WIDGET = "com.example.ggswidget.ACTION_UPDATE_WIDGET"
     }
 }
 
